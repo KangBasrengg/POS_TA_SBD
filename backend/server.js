@@ -29,12 +29,18 @@ async function initDatabase() {
   await connection.query(`USE \`${process.env.DB_NAME || 'kasir_nuril'}\``);
 
   await connection.query(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL
+  )
+`);
+
+// Untuk tabel yang sudah terlanjur dibuat tanpa deleted_at
+await connection.query(`
+  ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL DEFAULT NULL
+`).catch(() => {});
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS products (
