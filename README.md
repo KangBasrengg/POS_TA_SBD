@@ -1,3 +1,5 @@
+# final deployment
+https://tasbd.vercel.app/
 # KasirNuril - Web-Based Point of Sale (POS) System
 
 KasirNuril adalah aplikasi Point of Sale (Kasir) modern berbasisi web yang dirancang untuk mempermudah manajemen produk dan transaksi penjualan. Aplikasi ini menggunakan teknologi web terkini dengan tampilan UI bertema gelap (dark mode) yang premium dan navigasi yang responsif.
