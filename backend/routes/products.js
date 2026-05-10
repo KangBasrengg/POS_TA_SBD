@@ -31,6 +31,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET deleted products (trash) — harus SEBELUM /:id
+router.get('/trash/list', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT p.*, c.name as category_name 
+       FROM products p 
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.deleted_at IS NOT NULL
+       ORDER BY p.deleted_at DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET single product (exclude soft deleted)
 router.get('/:id', async (req, res) => {
   try {
@@ -62,6 +78,22 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT restore product from trash — harus SEBELUM /:id
+router.put('/:id/restore', async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      'UPDATE products SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL',
+      [req.params.id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Produk tidak ditemukan di trash' });
+    }
+    res.json({ message: 'Produk berhasil dipulihkan' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PUT update product
 router.put('/:id', async (req, res) => {
   try {
@@ -71,6 +103,22 @@ router.put('/:id', async (req, res) => {
       [name, price, stock, category_id || null, req.params.id]
     );
     res.json({ id: parseInt(req.params.id), name, price, stock, category_id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE product permanently — harus SEBELUM /:id
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM products WHERE id = ? AND deleted_at IS NOT NULL',
+      [req.params.id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Produk tidak ditemukan di trash' });
+    }
+    res.json({ message: 'Produk berhasil dihapus permanen' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -87,54 +135,6 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Produk tidak ditemukan atau sudah dihapus' });
     }
     res.json({ message: 'Produk berhasil dihapus' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET deleted products (trash)
-router.get('/trash/list', async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      `SELECT p.*, c.name as category_name 
-       FROM products p 
-       LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.deleted_at IS NOT NULL
-       ORDER BY p.deleted_at DESC`
-    );
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT restore product from trash
-router.put('/:id/restore', async (req, res) => {
-  try {
-    const [result] = await pool.query(
-      'UPDATE products SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL',
-      [req.params.id]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Produk tidak ditemukan di trash' });
-    }
-    res.json({ message: 'Produk berhasil dipulihkan' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE product permanently (hard delete)
-router.delete('/:id/permanent', async (req, res) => {
-  try {
-    const [result] = await pool.query(
-      'DELETE FROM products WHERE id = ? AND deleted_at IS NOT NULL',
-      [req.params.id]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Produk tidak ditemukan di trash' });
-    }
-    res.json({ message: 'Produk berhasil dihapus permanen' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -9,6 +9,8 @@ import QtyModal from './components/QtyModal';
 import CategoryManagerModal from './components/CategoryManagerModal';
 import SalesReportModal from './components/SalesReportModal';
 import TrashModal from './components/TrashModal';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, createCategory, createTransaction } from './api';
 import toast from 'react-hot-toast';
 
@@ -16,21 +18,17 @@ function formatRupiah(num) {
   return 'Rp ' + Number(num).toLocaleString('id-ID');
 }
 
-export default function App() {
-  // Products & Categories
+// ─── Halaman Kasir Utama ────────────────────────────────────────────────────
+function KasirApp() {
+  const { user, logout } = useAuth();
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
-
-  // Cart
   const [cart, setCart] = useState([]);
-
-  // Payment
   const [paymentAmount, setPaymentAmount] = useState('');
-
-  // Modals
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -41,12 +39,10 @@ export default function App() {
   const [showSalesReport, setShowSalesReport] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
 
-  // Derived
   const totalBelanja = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const paymentNum = Number(paymentAmount) || 0;
   const kembalian = paymentNum - totalBelanja;
 
-  // Load data
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -63,11 +59,8 @@ export default function App() {
     }
   }, [searchTerm, activeCategory]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Product CRUD
   const handleSaveProduct = async (data) => {
     try {
       if (editingProduct) {
@@ -80,9 +73,7 @@ export default function App() {
       setShowProductForm(false);
       setEditingProduct(null);
       loadData();
-    } catch (err) {
-      toast.error(err.message);
-    }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleDeleteProduct = async (id) => {
@@ -91,9 +82,7 @@ export default function App() {
       await deleteProduct(id);
       toast.success('Produk dihapus');
       loadData();
-    } catch (err) {
-      toast.error(err.message);
-    }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleEditProduct = (product) => {
@@ -101,23 +90,16 @@ export default function App() {
     setShowProductForm(true);
   };
 
-  // Category
   const handleAddCategory = async (name) => {
     try {
       await createCategory({ name });
       toast.success('Kategori ditambahkan');
       loadData();
-    } catch (err) {
-      toast.error(err.message);
-    }
+    } catch (err) { toast.error(err.message); }
   };
 
-  // Cart
   const handleProductClick = (product) => {
-    if (product.stock <= 0) {
-      toast.error('Stok habis!');
-      return;
-    }
+    if (product.stock <= 0) { toast.error('Stok habis!'); return; }
     setSelectedProduct(product);
     setShowQtyModal(true);
   };
@@ -127,18 +109,12 @@ export default function App() {
       const existing = prev.find(item => item.product_id === product.id);
       if (existing) {
         const newQty = existing.quantity + qty;
-        if (newQty > product.stock) {
-          toast.error(`Stok tersisa: ${product.stock}`);
-          return prev;
-        }
+        if (newQty > product.stock) { toast.error(`Stok tersisa: ${product.stock}`); return prev; }
         return prev.map(item =>
           item.product_id === product.id ? { ...item, quantity: newQty } : item
         );
       } else {
-        if (qty > product.stock) {
-          toast.error(`Stok tersisa: ${product.stock}`);
-          return prev;
-        }
+        if (qty > product.stock) { toast.error(`Stok tersisa: ${product.stock}`); return prev; }
         return [...prev, {
           product_id: product.id,
           product_name: product.name,
@@ -159,10 +135,7 @@ export default function App() {
       if (item.product_id === productId) {
         const newQty = item.quantity + delta;
         if (newQty <= 0) return null;
-        if (newQty > item.stock) {
-          toast.error(`Stok tersisa: ${item.stock}`);
-          return item;
-        }
+        if (newQty > item.stock) { toast.error(`Stok tersisa: ${item.stock}`); return item; }
         return { ...item, quantity: newQty };
       }
       return item;
@@ -173,21 +146,11 @@ export default function App() {
     setCart(prev => prev.filter(item => item.product_id !== productId));
   };
 
-  const handleClearCart = () => {
-    setCart([]);
-    setPaymentAmount('');
-  };
+  const handleClearCart = () => { setCart([]); setPaymentAmount(''); };
 
-  // Payment
   const handlePayment = async () => {
-    if (cart.length === 0) {
-      toast.error('Keranjang kosong!');
-      return;
-    }
-    if (paymentNum < totalBelanja) {
-      toast.error('Pembayaran kurang!');
-      return;
-    }
+    if (cart.length === 0) { toast.error('Keranjang kosong!'); return; }
+    if (paymentNum < totalBelanja) { toast.error('Pembayaran kurang!'); return; }
     try {
       const result = await createTransaction({
         items: cart.map(item => ({
@@ -204,32 +167,18 @@ export default function App() {
       setPaymentAmount('');
       loadData();
       toast.success('Transaksi berhasil!');
-    } catch (err) {
-      toast.error(err.message);
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Yakin ingin keluar?')) {
+      logout();
+      toast.success('Berhasil keluar');
     }
   };
 
   return (
     <div className="app-layout">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: '#1a1f2e',
-            color: '#e6edf3',
-            border: '1px solid #30363d',
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '0.85rem'
-          },
-          success: {
-            iconTheme: { primary: '#3fb950', secondary: '#0d1117' }
-          },
-          error: {
-            iconTheme: { primary: '#f85149', secondary: '#0d1117' }
-          }
-        }}
-      />
-
       <Navbar
         totalBelanja={totalBelanja}
         paymentAmount={paymentNum}
@@ -237,6 +186,8 @@ export default function App() {
         cartCount={cart.length}
         formatRupiah={formatRupiah}
         onShowReport={() => setShowSalesReport(true)}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <div className="main-content">
@@ -308,9 +259,9 @@ export default function App() {
       )}
 
       {showSalesReport && (
-        <SalesReportModal 
-          onClose={() => setShowSalesReport(false)} 
-          formatRupiah={formatRupiah} 
+        <SalesReportModal
+          onClose={() => setShowSalesReport(false)}
+          formatRupiah={formatRupiah}
         />
       )}
 
@@ -322,5 +273,66 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+// ─── Auth Gate ───────────────────────────────────────────────────────────────
+function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={loadingStyles.root}>
+        <div style={loadingStyles.spinner} />
+        <p style={loadingStyles.text}>Memuat sesi...</p>
+      </div>
+    );
+  }
+
+  return user ? <KasirApp /> : <LoginPage />;
+}
+
+const loadingStyles = {
+  root: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f1117',
+    gap: '14px',
+  },
+  spinner: {
+    width: '36px',
+    height: '36px',
+    border: '3px solid rgba(234,179,8,.2)',
+    borderTopColor: '#eab308',
+    borderRadius: '50%',
+    animation: 'spin .7s linear infinite',
+  },
+  text: { color: '#64748b', fontSize: '13px', margin: 0, fontFamily: 'sans-serif' },
+};
+
+// ─── Export utama ────────────────────────────────────────────────────────────
+export default function App() {
+  return (
+    <AuthProvider>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#1a1f2e',
+            color: '#e6edf3',
+            border: '1px solid #30363d',
+            fontFamily: "'Inter', sans-serif",
+            fontSize: '0.85rem'
+          },
+          success: { iconTheme: { primary: '#3fb950', secondary: '#0d1117' } },
+          error:   { iconTheme: { primary: '#f85149', secondary: '#0d1117' } }
+        }}
+      />
+      <AppContent />
+    </AuthProvider>
   );
 }
