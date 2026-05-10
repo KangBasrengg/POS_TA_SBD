@@ -15,7 +15,7 @@ async function initDatabase() {
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
     port: process.env.DB_PORT || 3306
   };
 
@@ -35,7 +35,8 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS categories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL
     )
   `);
 
@@ -48,9 +49,23 @@ async function initDatabase() {
       category_id INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )
   `);
+
+  // Tambahkan kolom deleted_at untuk database yang sudah terlanjur dibuat
+  try {
+    await connection.query('ALTER TABLE categories ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') console.error('Gagal menambah deleted_at ke categories:', error.message);
+  }
+
+  try {
+    await connection.query('ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') console.error('Gagal menambah deleted_at ke products:', error.message);
+  }
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS transactions (
