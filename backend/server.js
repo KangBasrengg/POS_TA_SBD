@@ -32,6 +32,17 @@ async function initDatabase() {
   await connection.query(`USE \`${process.env.DB_NAME || 'kasir_nuril'}\``);
 
   await connection.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      role ENUM('admin', 'cashier') DEFAULT 'cashier',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await connection.query(`
     CREATE TABLE IF NOT EXISTS categories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
@@ -84,10 +95,16 @@ async function initDatabase() {
 const productsRouter = require('./routes/products');
 const categoriesRouter = require('./routes/categories');
 const transactionsRouter = require('./routes/transactions');
+const authRouter = require('./routes/auth');
+const { verifyToken } = require('./middleware/auth');
 
-app.use('/api/products', productsRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/transactions', transactionsRouter);
+// Public auth routes (no token required)
+app.use('/api/auth', authRouter);
+
+// Protected routes (token required)
+app.use('/api/products', verifyToken, productsRouter);
+app.use('/api/categories', verifyToken, categoriesRouter);
+app.use('/api/transactions', verifyToken, transactionsRouter);
 
 app.get('/', (req, res) => {
   res.json({ message: 'KasirNuril API is running' });

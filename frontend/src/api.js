@@ -1,9 +1,18 @@
 // Gunakan environment variable jika ada (seperti di Vercel), jika tidak gunakan proxy lokal (/api)
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+export const API_URL = API_BASE;
 
 async function request(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  
+  // Add JWT token if available
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options
   });
   const data = await res.json();
