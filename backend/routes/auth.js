@@ -1,4 +1,4 @@
-require('dotenv').config(); // ← tambah di sini supaya JWT_SECRET pasti terbaca
+require('dotenv').config(); 
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
