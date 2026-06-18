@@ -1,5 +1,5 @@
 // Gunakan environment variable jika ada (seperti di Vercel), jika tidak gunakan proxy lokal (/api)
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 async function request(url, options = {}) {
   const res = await fetch(`${API_BASE}${url}`, {

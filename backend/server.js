@@ -15,12 +15,15 @@ async function initDatabase() {
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
     port: process.env.DB_PORT || 3306
   };
 
+  // Gunakan SSL jika terhubung ke cloud database (seperti Aiven)
   if (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') {
-    dbConfig.ssl = { rejectUnauthorized: false };
+    dbConfig.ssl = {
+      rejectUnauthorized: false
+    };
   }
 
   const connection = await mysql.createConnection(dbConfig);
@@ -29,18 +32,13 @@ async function initDatabase() {
   await connection.query(`USE \`${process.env.DB_NAME || 'kasir_nuril'}\``);
 
   await connection.query(`
-  CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL DEFAULT NULL
-  )
-`);
-
-// Untuk tabel yang sudah terlanjur dibuat tanpa deleted_at
-await connection.query(`
-  ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL DEFAULT NULL
-`).catch(() => {});
+    CREATE TABLE IF NOT EXISTS categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL
+    )
+  `);
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS products (
@@ -51,13 +49,23 @@ await connection.query(`
       category_id INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )
   `);
 
-  await connection.query(`
-  ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL DEFAULT NULL
-  `).catch(() => {});
+  // Tambahkan kolom deleted_at untuk database yang sudah terlanjur dibuat
+  try {
+    await connection.query('ALTER TABLE categories ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') console.error('Gagal menambah deleted_at ke categories:', error.message);
+  }
+
+  try {
+    await connection.query('ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') console.error('Gagal menambah deleted_at ke products:', error.message);
+  }
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS transactions (
@@ -83,48 +91,18 @@ await connection.query(`
     )
   `);
 
-  // ← TAMBAHAN: tabel users untuk autentikasi
-  await connection.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nama VARCHAR(100) NOT NULL,
-      username VARCHAR(50) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      role ENUM('admin', 'kasir') NOT NULL DEFAULT 'kasir',
-      is_active TINYINT(1) NOT NULL DEFAULT 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Seed akun admin default jika belum ada
-  const [existing] = await connection.query(
-    "SELECT id FROM users WHERE username = 'admin'"
-  );
-  if (existing.length === 0) {
-    // password: admin123 (bcrypt hash salt 12)
-    await connection.query(`
-      INSERT INTO users (nama, username, password, role) VALUES
-      ('Administrator', 'admin', '$2a$12$KIXxW7vNg.FMRyoqVn0uleqb1FOK.S6xgjQC7cK8hEDa.cW.yzl2e', 'admin'),
-      ('Kasir', 'kasir1', '$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'kasir')
-    `);
-    console.log('✅ Akun default dibuat: admin / admin123 | kasir1 / kasir123');
-  }
-
   await connection.end();
   console.log('✅ Database & tables initialized successfully');
 }
 
 // Routes
-const productsRouter     = require('./routes/products');
-const categoriesRouter   = require('./routes/categories');
+const productsRouter = require('./routes/products');
+const categoriesRouter = require('./routes/categories');
 const transactionsRouter = require('./routes/transactions');
-const { router: authRouter } = require('./routes/auth');
 
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/transactions', transactionsRouter);
-app.use('/api/auth', authRouter);
 
 app.get('/', (req, res) => {
   res.json({ message: 'KasirNuril API is running' });

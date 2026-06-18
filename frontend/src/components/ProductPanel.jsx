@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiPackage, FiLayers, FiArchive } from 'react-icons/fi';
-import { useAuth } from '../context/AuthContext';
 
 export default function ProductPanel({
   products,
@@ -18,9 +17,6 @@ export default function ProductPanel({
   onShowTrash,
   formatRupiah
 }) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-
   const getCategoryClass = (catName) => {
     if (!catName) return '';
     const lower = catName.toLowerCase();
@@ -36,39 +32,35 @@ export default function ProductPanel({
           <FiPackage className="panel-title-icon" />
           Katalog Produk
         </h2>
-
-        {/* Tombol aksi — hanya tampil untuk admin */}
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              className="btn btn-ghost"
-              onClick={onManageCategory}
-              id="btn-manage-category"
-              style={{ padding: '8px 14px', fontSize: '0.8rem' }}
-            >
-              <FiLayers size={14} />
-              Kelola Kategori
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={onShowTrash}
-              id="btn-trash"
-              style={{ padding: '8px 14px', fontSize: '0.8rem', color: '#f85149', borderColor: '#f85149' }}
-            >
-              <FiArchive size={14} />
-              Sampah
-            </button>
-            <button
-              className="btn btn-accent"
-              onClick={onAddProduct}
-              id="btn-add-product"
-              style={{ padding: '8px 14px', fontSize: '0.8rem' }}
-            >
-              <FiPlus size={14} />
-              Tambah Produk
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={onManageCategory}
+            id="btn-manage-category"
+            style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+          >
+            <FiLayers size={14} />
+            Kelola Kategori
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={onShowTrash}
+            id="btn-trash"
+            style={{ padding: '8px 14px', fontSize: '0.8rem', color: '#f85149', borderColor: '#f85149' }}
+          >
+            <FiArchive size={14} />
+            Sampah
+          </button>
+          <button
+            className="btn btn-accent"
+            onClick={onAddProduct}
+            id="btn-add-product"
+            style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+          >
+            <FiPlus size={14} />
+            Tambah Produk
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -116,9 +108,7 @@ export default function ProductPanel({
           <div className="empty-products">
             <div className="empty-products-icon">📦</div>
             <p style={{ fontWeight: 500 }}>Belum ada produk</p>
-            <p style={{ fontSize: '0.8rem', marginTop: 4 }}>
-              {isAdmin ? 'Klik "Tambah Produk" untuk menambahkan' : 'Belum ada produk tersedia'}
-            </p>
+            <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Klik "Tambah Produk" untuk menambahkan</p>
           </div>
         ) : (
           products.map((product, index) => (
@@ -131,30 +121,25 @@ export default function ProductPanel({
             >
               <div className="product-card-header">
                 <div className="product-card-name">{product.name}</div>
-
-                {/* Tombol edit & hapus — hanya admin */}
-                {isAdmin && (
-                  <div className="product-card-actions">
-                    <button
-                      className="product-card-btn edit"
-                      onClick={(e) => { e.stopPropagation(); onEditProduct(product); }}
-                      title="Edit produk"
-                      id={`btn-edit-${product.id}`}
-                    >
-                      <FiEdit2 />
-                    </button>
-                    <button
-                      className="product-card-btn"
-                      onClick={(e) => { e.stopPropagation(); onDeleteProduct(product.id); }}
-                      title="Hapus produk"
-                      id={`btn-delete-${product.id}`}
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                )}
+                <div className="product-card-actions">
+                  <button
+                    className="product-card-btn edit"
+                    onClick={(e) => { e.stopPropagation(); onEditProduct(product); }}
+                    title="Edit produk"
+                    id={`btn-edit-${product.id}`}
+                  >
+                    <FiEdit2 />
+                  </button>
+                  <button
+                    className="product-card-btn"
+                    onClick={(e) => { e.stopPropagation(); onDeleteProduct(product.id); }}
+                    title="Hapus produk"
+                    id={`btn-delete-${product.id}`}
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
               </div>
-
               <div className="product-card-price">{formatRupiah(product.price)}</div>
               <div className={`product-card-stock ${product.stock <= 5 ? 'low' : ''}`}>
                 Stok: {product.stock}
